@@ -365,7 +365,13 @@
   img { max-width: 100%; }
   .nm-article__hero img { width: 100%; height: auto; display: block; }
   .nm-simple-nav { max-width: 720px; margin: 0 auto; padding: 20px 20px 0; }
-  .nm-simple-nav a { font-size: 0.9rem; color: var(--accent-deep); text-decoration: none; font-weight: 600; }
+  .nm-simple-nav a {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.9rem; font-weight: 600; color: var(--accent-deep);
+    text-decoration: none; padding: 8px 16px; border-radius: 999px;
+    border: 1px solid var(--pewter-line); background: var(--card-bg);
+  }
+  .nm-simple-nav a:hover { background: var(--blush); border-color: var(--blush-line); }
   .nm-related-simple { max-width: 720px; margin: 40px auto 0; padding: 0 20px; }
   .nm-related-simple h2 { font-size: 1.2rem; margin-bottom: 12px; }
   .nm-related-simple ul { padding-left: 20px; line-height: 1.9; }
@@ -375,7 +381,7 @@
 </style>
 </head>
 <body>
-<nav class="nm-simple-nav"><a href="/">&larr; The New Mom Journal</a> &middot; <a href="/category-nurse.html">Breastfeeding &amp; Nursing</a></nav>
+<nav class="nm-simple-nav"><a href="/">&larr; Back to The New Mom Journal</a></nav>
 <article class="nm-article">
 
       <div class="nm-article__meta">Breastfeeding &amp; Nursing &middot; July 3, 2026 &middot; 7 min read</div>
