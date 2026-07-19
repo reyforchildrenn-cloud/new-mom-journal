@@ -198,6 +198,14 @@
     cursor: pointer;
   }
   .nm-card.is-hidden, .nm-related__card.is-hidden { display: none; }
+  .nm-back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-bottom: 20px; padding: 8px 16px; border-radius: 999px;
+    border: 1px solid var(--pewter-line); background: var(--card-bg);
+    color: var(--accent-deep); text-decoration: none;
+    font-size: 0.9rem; font-weight: 600;
+  }
+  .nm-back-link:hover { background: var(--blush); border-color: var(--blush-line); }
   .nm-blog__filter--active {
     background: var(--accent);
     border-color: var(--accent);

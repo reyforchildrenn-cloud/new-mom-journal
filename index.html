@@ -63,6 +63,19 @@
 <meta name="twitter:title" content="The New Mom Journal — Real Talk on Pregnancy, Breastfeeding &amp; Newborn Care">
 <meta name="twitter:description" content="Honest, practical guidance for pregnancy, breastfeeding, and the first year with your newborn — sore nipples, sleep, feeding schedules, and the questions no one prepares you for.">
 <meta name="twitter:image" content="https://www.reyforchildren.com/assets/home-1.jpg">
+<title>The New Mom Journal — Real Talk on Pregnancy, Breastfeeding &amp; Newborn Care</title>
+<meta name="description" content="Honest, practical guidance for pregnancy, breastfeeding, and the first year with your newborn — sore nipples, sleep, feeding schedules, and the questions no one prepares you for.">
+<link rel="canonical" href="https://www.reyforchildren.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The New Mom Journal">
+<meta property="og:title" content="The New Mom Journal — Real Talk on Pregnancy, Breastfeeding &amp; Newborn Care">
+<meta property="og:description" content="Honest, practical guidance for pregnancy, breastfeeding, and the first year with your newborn — sore nipples, sleep, feeding schedules, and the questions no one prepares you for.">
+<meta property="og:url" content="https://www.reyforchildren.com/">
+<meta property="og:image" content="https://www.reyforchildren.com/assets/home-1.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The New Mom Journal — Real Talk on Pregnancy, Breastfeeding &amp; Newborn Care">
+<meta name="twitter:description" content="Honest, practical guidance for pregnancy, breastfeeding, and the first year with your newborn — sore nipples, sleep, feeding schedules, and the questions no one prepares you for.">
+<meta name="twitter:image" content="https://www.reyforchildren.com/assets/home-1.jpg">
 </head><body>
 <style>
   :root {
@@ -246,6 +259,14 @@
     cursor: pointer;
   }
   .nm-card.is-hidden, .nm-related__card.is-hidden { display: none; }
+  .nm-back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-bottom: 20px; padding: 8px 16px; border-radius: 999px;
+    border: 1px solid var(--pewter-line); background: var(--card-bg);
+    color: var(--accent-deep); text-decoration: none;
+    font-size: 0.9rem; font-weight: 600;
+  }
+  .nm-back-link:hover { background: var(--blush); border-color: var(--blush-line); }
   .nm-blog__filter--active {
     background: var(--accent);
     border-color: var(--accent);
@@ -810,6 +831,7 @@
 
   <!-- ============ ARTICLE PANEL ============ -->
   <section id="panel-article" class="panel">
+    <a href="#" data-filter="all" class="nm-back-link">&larr; Back to The New Mom Journal</a>
     <article class="nm-article" id="article-render">
       <div class="nm-article__meta">Breastfeeding &amp; Nursing · July 3, 2026 · 6 min read</div>
       <h1 class="nm-article__title">Sore Nipples in the First Week: What's Normal and What's Not</h1>
@@ -2806,6 +2828,8 @@
     document.title = (titleEl ? titleEl.textContent : 'The New Mom Journal') + ' | The New Mom Journal';
     var titleEl = articleRender.querySelector('.nm-article__title');
     document.title = (titleEl ? titleEl.textContent : 'The New Mom Journal') + ' | The New Mom Journal';
+    var titleEl = articleRender.querySelector('.nm-article__title');
+    document.title = (titleEl ? titleEl.textContent : 'The New Mom Journal') + ' | The New Mom Journal';
     var heroImg = articleRender.querySelector('.js-hero-img');
     if (heroImg && heroSrc) { heroImg.src = heroSrc; }
     renderRelated(slug);
@@ -2838,6 +2862,7 @@
       if (filter === 'all') {
         setActiveFilter('all');
         show('list');
+        document.title = 'The New Mom Journal — Real Talk on Pregnancy, Breastfeeding & Newborn Care';
         document.title = 'The New Mom Journal — Real Talk on Pregnancy, Breastfeeding & Newborn Care';
         document.title = 'The New Mom Journal — Real Talk on Pregnancy, Breastfeeding & Newborn Care';
         document.title = 'The New Mom Journal — Real Talk on Pregnancy, Breastfeeding & Newborn Care';
