@@ -465,13 +465,13 @@
 
     <div class="nm-blog__filters">
       <button type="button" class="nm-blog__filter nm-blog__filter--active" data-filter="all">All Posts</button>
-      <a class="nm-blog__filter" href="?cat=prep" target="_blank" rel="noopener" data-filter="prep">Pregnancy &amp; Prep</a>
-      <a class="nm-blog__filter" href="?cat=nurse" target="_blank" rel="noopener" data-filter="nurse">Breastfeeding &amp; Nursing</a>
-      <a class="nm-blog__filter" href="?cat=newborn" target="_blank" rel="noopener" data-filter="newborn">Newborn Care</a>
-      <a class="nm-blog__filter" href="?cat=post" target="_blank" rel="noopener" data-filter="post">Postpartum Recovery</a>
+      <button type="button" class="nm-blog__filter" data-filter="prep">Pregnancy &amp; Prep</button>
+      <button type="button" class="nm-blog__filter" data-filter="nurse">Breastfeeding &amp; Nursing</button>
+      <button type="button" class="nm-blog__filter" data-filter="newborn">Newborn Care</button>
+      <button type="button" class="nm-blog__filter" data-filter="post">Postpartum Recovery</button>
     </div>
 
-    <div class="nm-blog__grid">
+    <div class="nm-blog__grid" id="nm-blog-grid-main">
 
       <a class="nm-card" href="#" data-article="sore-nipples" data-category="nurse">
         <div class="ph ph--nurse">
@@ -859,6 +859,18 @@
       <h2 class="nm-related__heading">More for you</h2>
       <div class="nm-related__grid"></div>
     </div>
+  </section>
+
+  <section id="panel-category" class="panel">
+    <div class="nm-blog__filters">
+      <button type="button" class="nm-blog__filter" data-filter="all">All Posts</button>
+      <button type="button" class="nm-blog__filter" data-filter="prep">Pregnancy &amp; Prep</button>
+      <button type="button" class="nm-blog__filter" data-filter="nurse">Breastfeeding &amp; Nursing</button>
+      <button type="button" class="nm-blog__filter" data-filter="newborn">Newborn Care</button>
+      <button type="button" class="nm-blog__filter" data-filter="post">Postpartum Recovery</button>
+    </div>
+    <h2 id="category-heading" class="nm-blog__heading" style="text-align: center; margin: 0 0 30px;"></h2>
+    <div class="nm-blog__grid" id="category-grid"></div>
   </section>
 </div>
 
@@ -2613,15 +2625,19 @@
   var articleBtn = document.getElementById('tab-article');
   var listPanel = document.getElementById('panel-list');
   var articlePanel = document.getElementById('panel-article');
+  var categoryPanel = document.getElementById('panel-category');
 
   function show(which) {
     var isList = which === 'list';
+    var isArticle = which === 'article';
+    var isCategory = which === 'category';
     listPanel.classList.toggle('active', isList);
-    articlePanel.classList.toggle('active', !isList);
-    listBtn.classList.toggle('active', isList);
-    articleBtn.classList.toggle('active', !isList);
-    listBtn.setAttribute('aria-selected', isList);
-    articleBtn.setAttribute('aria-selected', !isList);
+    articlePanel.classList.toggle('active', isArticle);
+    categoryPanel.classList.toggle('active', isCategory);
+    listBtn.classList.toggle('active', isList || isCategory);
+    articleBtn.classList.toggle('active', isArticle);
+    listBtn.setAttribute('aria-selected', isList || isCategory);
+    articleBtn.setAttribute('aria-selected', isArticle);
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
@@ -2629,12 +2645,15 @@
   articleBtn.addEventListener('click', function () { show('article'); });
 
   var articleRender = document.getElementById('article-render');
+  var mainGrid = document.getElementById('nm-blog-grid-main');
+  var categoryGrid = document.getElementById('category-grid');
+  var categoryHeading = document.getElementById('category-heading');
 
   function renderRelated(currentSlug) {
     var grid = document.querySelector('.nm-related__grid');
     if (!grid) return;
     grid.innerHTML = '';
-    document.querySelectorAll('.nm-blog__grid .nm-card').forEach(function (card) {
+    mainGrid.querySelectorAll('.nm-card').forEach(function (card) {
       var slug = card.getAttribute('data-article');
       if (slug === currentSlug) return;
       var ph = card.querySelector('.ph');
@@ -2663,23 +2682,34 @@
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
-  function applyFilter(filter) {
-    var btn = document.querySelector('.nm-blog__filter[data-filter="' + filter + '"]');
+  function setActiveFilter(filter) {
     document.querySelectorAll('.nm-blog__filter').forEach(function (b) {
-      b.classList.toggle('nm-blog__filter--active', b === btn);
+      b.classList.toggle('nm-blog__filter--active', b.getAttribute('data-filter') === filter);
     });
-    document.querySelectorAll('.nm-blog__grid .nm-card').forEach(function (card) {
-      var match = filter === 'all' || card.getAttribute('data-category') === filter;
-      card.classList.toggle('is-hidden', !match);
+  }
+
+  function renderCategory(filter) {
+    var labelBtn = document.querySelector('.nm-blog__filter[data-filter="' + filter + '"]');
+    categoryHeading.textContent = labelBtn ? labelBtn.textContent : '';
+    categoryGrid.innerHTML = '';
+    mainGrid.querySelectorAll('.nm-card').forEach(function (card) {
+      if (card.getAttribute('data-category') !== filter) return;
+      categoryGrid.appendChild(card.cloneNode(true));
     });
+    setActiveFilter(filter);
+    show('category');
   }
 
   document.querySelector('.frame').addEventListener('click', function (e) {
     var filterBtn = e.target.closest('[data-filter]');
     if (filterBtn) {
-      if (filterBtn.tagName === 'A') return;
-      applyFilter(filterBtn.getAttribute('data-filter'));
-      window.scrollTo({ top: 0, behavior: 'auto' });
+      var filter = filterBtn.getAttribute('data-filter');
+      if (filter === 'all') {
+        setActiveFilter('all');
+        show('list');
+      } else {
+        renderCategory(filter);
+      }
       return;
     }
 
@@ -2690,11 +2720,6 @@
     var img = el.querySelector('img');
     renderArticle(slug, img ? img.src : '');
   });
-
-  var catParam = new URLSearchParams(window.location.search).get('cat');
-  if (catParam && document.querySelector('.nm-blog__filter[data-filter="' + catParam + '"]')) {
-    applyFilter(catParam);
-  }
 </script>
 
 </body></html>
