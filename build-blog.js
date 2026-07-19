@@ -73,13 +73,15 @@ if (!styleMatch) throw new Error('shared <style> block not found');
 const sharedStyle = styleMatch[0];
 
 // ---------- 2. Extract cards ----------
-const cardRe = /<a class="nm-card" href="#" data-article="([^"]+)" data-category="([^"]+)">([\s\S]*?)<\/a>/g;
+// href matches both a fresh card (href="#") and an already-processed one
+// (href="/blog/slug/") so this script is safe to re-run after prior builds.
+const cardRe = /<a class="nm-card" href="[^"]*" data-article="([^"]+)" data-category="([^"]+)">([\s\S]*?)<\/a>/g;
 const cards = {};
 const cardOrder = [];
 let cm;
 while ((cm = cardRe.exec(raw))) {
   const [full, slug, category, inner] = cm;
-  const imgMatch = /<img src="(data:image\/[^"]+)" alt="([^"]*)"/.exec(inner);
+  const imgMatch = /<img src="([^"]+)" alt="([^"]*)"/.exec(inner);
   const titleMatch = /<h2 class="nm-card__title">([\s\S]*?)<\/h2>/.exec(inner);
   const excerptMatch = /<p class="nm-card__excerpt">([\s\S]*?)<\/p>/.exec(inner);
   const metaMatch = /<div class="nm-card__meta">([\s\S]*?)<\/div>/.exec(inner);
@@ -140,12 +142,19 @@ for (const slug of cardOrder) {
   fs.mkdirSync(postDir, { recursive: true });
 
   // Hero image comes from the card thumbnail (this is what the SPA's JS
-  // passes into renderArticle() as heroSrc).
-  const heroDec = decodeDataUri(card.imgDataUri);
-  if (!heroDec) throw new Error('bad hero data uri for ' + slug);
-  const heroFile = `hero.${heroDec.ext}`;
-  fs.writeFileSync(path.join(postDir, heroFile), heroDec.buffer);
-  const heroPath = `/blog/${slug}/${heroFile}`;
+  // passes into renderArticle() as heroSrc). It's either a fresh base64
+  // data URI (extract to a file) or already a real path to an existing
+  // asset (a post reusing an existing site image) — use as-is.
+  let heroPath;
+  if (card.imgDataUri.startsWith('data:image')) {
+    const heroDec = decodeDataUri(card.imgDataUri);
+    if (!heroDec) throw new Error('bad hero data uri for ' + slug);
+    const heroFile = `hero.${heroDec.ext}`;
+    fs.writeFileSync(path.join(postDir, heroFile), heroDec.buffer);
+    heroPath = `/blog/${slug}/${heroFile}`;
+  } else {
+    heroPath = card.imgDataUri;
+  }
 
   // Inline content images embedded directly in the template (e.g. figure
   // breaks). The hero placeholder in the template has no src (class
@@ -267,11 +276,12 @@ fs.writeFileSync(path.join(ROOT, 'robots.txt'), robots);
 // only touch that card's own <img>.
 for (const slug of cardOrder) {
   const card = cards[slug];
+  if (!card.imgDataUri.startsWith('data:image')) continue; // already a real path, nothing to replace
   const heroDec = decodeDataUri(card.imgDataUri);
   const heroFile = `hero.${heroDec.ext}`;
   const heroPath = `/blog/${slug}/${heroFile}`;
   const cardImgRe = new RegExp(
-    `(<a class="nm-card" href="#" data-article="${slug}"[^>]*>[\\s\\S]*?<img src=")data:image\\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+(")`
+    `(<a class="nm-card" href="[^"]*" data-article="${slug}"[^>]*>[\\s\\S]*?<img src=")data:image\\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+(")`
   );
   const before = raw;
   raw = raw.replace(cardImgRe, `$1${heroPath}$2`);
@@ -313,7 +323,7 @@ const headExtra = `<title>${escapeAttr(homeTitle)}</title>
 raw = raw.replace('</head>', headExtra);
 
 // 8d. Real hrefs on cards so crawlers (and no-JS users) can navigate directly.
-raw = raw.replace(/<a class="nm-card" href="#" data-article="([^"]+)"/g, '<a class="nm-card" href="/blog/$1/" data-article="$1"');
+raw = raw.replace(/<a class="nm-card" href="[^"]*" data-article="([^"]+)"/g, '<a class="nm-card" href="/blog/$1/" data-article="$1"');
 
 // 8e. Nice-to-have: keep document.title in sync when the SPA renders an
 // article client-side (helps the browser tab / bookmark, share-at-that-
