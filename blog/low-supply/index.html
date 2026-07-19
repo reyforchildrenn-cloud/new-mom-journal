@@ -358,6 +358,12 @@
   }
 </style>
 <style>
+  /* index.html constrains all <img> via a global rule in its tiny preamble
+     <style> block, which isn't part of sharedStyle above. Without it, the
+     bare <img class="js-hero-img"> inside .nm-article__hero (no .ph
+     wrapper in the templates) renders at full natural pixel size. */
+  img { max-width: 100%; }
+  .nm-article__hero img { width: 100%; height: auto; display: block; }
   .nm-simple-nav { max-width: 720px; margin: 0 auto; padding: 20px 20px 0; }
   .nm-simple-nav a { font-size: 0.9rem; color: var(--accent-deep); text-decoration: none; font-weight: 600; }
   .nm-related-simple { max-width: 720px; margin: 40px auto 0; padding: 0 20px; }
