@@ -26,6 +26,7 @@ const path = require('path');
 const ROOT = __dirname;
 const SITE = 'https://www.reyforchildren.com';
 const SRC = path.join(ROOT, 'index.html');
+const TODAY = new Date().toISOString().slice(0, 10);
 
 function extFromMime(mime) {
   if (mime === 'jpeg') return 'jpg';
@@ -54,6 +55,14 @@ function truncate(s, n) {
   if (s.length <= n) return s;
   return s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…';
 }
+
+function jsonLdScript(obj) {
+  return `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`;
+}
+
+const AMAZON_URL = 'https://www.amazon.com/s?k=silver+nursing+cup&me=A1R76KWLYEAF9I&ref=nb_sb_noss';
+const PUBLISHER = { '@type': 'Organization', name: 'The New Mom Journal', url: `${SITE}/` };
+const AUTHOR = { '@type': 'Organization', name: 'The New Mom Journal Editorial Team', url: `${SITE}/` };
 
 let raw = fs.readFileSync(SRC, 'utf8');
 
@@ -174,6 +183,39 @@ for (const slug of cardOrder) {
   const canonical = `${SITE}/blog/${slug}/`;
   const ogImage = `${SITE}${heroPath}`;
 
+  const dateMatch = /([A-Z][a-z]+ \d{1,2}, \d{4})/.exec(card.metaText);
+  let datePublished = TODAY;
+  if (dateMatch) {
+    const d = new Date(dateMatch[1]);
+    if (!isNaN(d.getTime())) datePublished = d.toISOString().slice(0, 10);
+  }
+
+  const blogPostingLd = jsonLdScript({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: pageTitle,
+    description,
+    image: ogImage,
+    url: canonical,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+    datePublished,
+    dateModified: TODAY,
+    author: AUTHOR,
+    publisher: PUBLISHER,
+  });
+
+  const productLd = slug === 'best-silver-nursing-cups'
+    ? jsonLdScript({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: 'RFC Silver Nursing Cups',
+        brand: { '@type': 'Brand', name: 'RFC' },
+        description: '999 pure silver nursing cups, nickel-free, hand-finished edges, worn between feeds without creams. Includes a silicone fit ring, cleaning cloth, case, and a free breastfeeding e-book.',
+        url: AMAZON_URL,
+        image: 'https://m.media-amazon.com/images/I/71Ur2i8CcPL._AC_SL1500_.jpg',
+      })
+    : '';
+
   const otherPosts = cardOrder.filter((s) => s !== slug);
 
   const relatedListHtml = otherPosts
@@ -199,6 +241,8 @@ for (const slug of cardOrder) {
 <meta name="twitter:title" content="${escapeAttr(pageTitle)}">
 <meta name="twitter:description" content="${escapeAttr(description)}">
 <meta name="twitter:image" content="${ogImage}">
+${blogPostingLd}
+${productLd}
 ${sharedStyle}
 <style>
   /* index.html constrains all <img> via a global rule in its tiny preamble
@@ -241,13 +285,7 @@ ${staticArticleHtml}
 
   fs.writeFileSync(path.join(postDir, 'index.html'), page);
 
-  const dateMatch = /([A-Z][a-z]+ \d{1,2}, \d{4})/.exec(card.metaText);
-  let lastmod = new Date().toISOString().slice(0, 10);
-  if (dateMatch) {
-    const d = new Date(dateMatch[1]);
-    if (!isNaN(d.getTime())) lastmod = d.toISOString().slice(0, 10);
-  }
-  sitemapEntries.push({ loc: canonical, lastmod });
+  sitemapEntries.push({ loc: canonical, lastmod: datePublished });
 
   posts.push({ slug, heroPath, cleanedTplInner });
 }
@@ -269,6 +307,44 @@ Allow: /
 Sitemap: ${SITE}/sitemap.xml
 `;
 fs.writeFileSync(path.join(ROOT, 'robots.txt'), robots);
+
+// ---------- 7b. llms.txt ----------
+// Emerging convention (llmstxt.org) letting LLM-based crawlers and browsing
+// tools get a fast, structured summary of the site instead of having to
+// crawl every page to figure out what it's about.
+const CATEGORY_LABELS = {
+  nurse: 'Breastfeeding & Nursing',
+  prep: 'Pregnancy & Prep',
+  newborn: 'Newborn Care',
+  post: 'Postpartum Recovery',
+};
+const postsByCategory = {};
+for (const slug of cardOrder) {
+  const c = cards[slug];
+  (postsByCategory[c.category] ||= []).push(slug);
+}
+const llmsSections = Object.keys(CATEGORY_LABELS)
+  .filter((cat) => postsByCategory[cat] && postsByCategory[cat].length)
+  .map((cat) => {
+    const lines = postsByCategory[cat]
+      .map((slug) => `- [${cards[slug].title}](${SITE}/blog/${slug}/): ${cards[slug].excerpt}`)
+      .join('\n');
+    return `## ${CATEGORY_LABELS[cat]}\n\n${lines}`;
+  })
+  .join('\n\n');
+const llmsTxt = `# The New Mom Journal
+
+> Honest, practical guidance for pregnancy, breastfeeding, and the first year with a newborn, written by the RFC editorial team.
+
+The New Mom Journal is an independent parenting blog covering breastfeeding, newborn care, pregnancy preparation, and postpartum recovery. It is published by RFC (ReyForChildren), which also makes RFC Silver Nursing Cups, 999 pure silver, nickel-free nursing cups worn between feeds to relieve nipple soreness and cracking without creams. For an unbiased comparison of RFC against other silver nursing cup brands (Silverette, MoogCo, Willow, Momcozy, Koala Babycare, Go Mommy), see the guide linked below.
+
+${llmsSections}
+
+## Other
+
+- [Full sitemap](${SITE}/sitemap.xml)
+`;
+fs.writeFileSync(path.join(ROOT, 'llms.txt'), llmsTxt);
 
 // ---------- 8. Patch index.html in place ----------
 // 8a. Replace card hero + template inline base64 images with real file paths.
@@ -310,7 +386,22 @@ raw = raw.replace('<title>The New Mom Journal — Design Preview</title>\n', '')
 const homeTitle = 'The New Mom Journal — Real Talk on Pregnancy, Breastfeeding & Newborn Care';
 const homeDescription =
   'Honest, practical guidance for pregnancy, breastfeeding, and the first year with your newborn — sore nipples, sleep, feeding schedules, and the questions no one prepares you for.';
-const headExtra = `<title>${escapeAttr(homeTitle)}</title>
+
+const websiteLd = jsonLdScript({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'The New Mom Journal',
+  url: `${SITE}/`,
+  description: homeDescription,
+  publisher: {
+    '@type': 'Organization',
+    name: 'ReyForChildren (RFC)',
+    url: `${SITE}/`,
+    sameAs: [AMAZON_URL],
+  },
+});
+
+const headUnit = `<title>${escapeAttr(homeTitle)}</title>
 <meta name="description" content="${escapeAttr(homeDescription)}">
 <link rel="canonical" href="${SITE}/">
 <meta property="og:type" content="website">
@@ -323,8 +414,17 @@ const headExtra = `<title>${escapeAttr(homeTitle)}</title>
 <meta name="twitter:title" content="${escapeAttr(homeTitle)}">
 <meta name="twitter:description" content="${escapeAttr(homeDescription)}">
 <meta name="twitter:image" content="${SITE}/assets/home-1.jpg">
-</head>`;
-raw = raw.replace('</head>', headExtra);
+`;
+// Idempotent: strip every previously-injected copy of this exact block (content-based,
+// not marker-based, so it also cleans up copies left behind by older versions of this
+// script) before inserting exactly one fresh copy. Without this, re-running the script
+// duplicates title/meta/OG tags a little more each time, since the replaced text always
+// still contains the original search string as a prefix.
+const headUnitRe = new RegExp(headUnit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+raw = raw.replace(headUnitRe, '');
+const websiteLdRe = new RegExp(websiteLd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+raw = raw.replace(websiteLdRe, '');
+raw = raw.replace('</head>', `${headUnit}${websiteLd}\n</head>`);
 
 // 8d. Real hrefs on cards so crawlers (and no-JS users) can navigate directly.
 raw = raw.replace(/<a class="nm-card" href="[^"]*" data-article="([^"]+)"/g, '<a class="nm-card" href="/blog/$1/" data-article="$1"');
@@ -332,6 +432,17 @@ raw = raw.replace(/<a class="nm-card" href="[^"]*" data-article="([^"]+)"/g, '<a
 // 8e. Nice-to-have: keep document.title in sync when the SPA renders an
 // article client-side (helps the browser tab / bookmark, share-at-that-
 // moment previews; the static pages above are the real fix for crawlers).
+// Idempotent: strip any previously-injected copies first (unbounded string
+// replace on a substring that survives its own injection would otherwise
+// duplicate a little more on every re-run of this script).
+raw = raw.replace(
+  /\n\s*var titleEl = articleRender\.querySelector\('\.nm-article__title'\);\n\s*document\.title = \(titleEl \? titleEl\.textContent : 'The New Mom Journal'\) \+ ' \| The New Mom Journal';/g,
+  ''
+);
+raw = raw.replace(
+  /\n\s*document\.title = 'The New Mom Journal — Real Talk on Pregnancy, Breastfeeding & Newborn Care';/g,
+  ''
+);
 raw = raw.replace(
   "function renderArticle(slug, heroSrc) {\n    var tpl = document.getElementById('tpl-' + slug);\n    if (!tpl) return;\n    articleRender.innerHTML = tpl.innerHTML;",
   "function renderArticle(slug, heroSrc) {\n    var tpl = document.getElementById('tpl-' + slug);\n    if (!tpl) return;\n    articleRender.innerHTML = tpl.innerHTML;\n    var titleEl = articleRender.querySelector('.nm-article__title');\n    document.title = (titleEl ? titleEl.textContent : 'The New Mom Journal') + ' | The New Mom Journal';"
@@ -343,5 +454,5 @@ raw = raw.replace(
 
 fs.writeFileSync(SRC, raw);
 
-console.log(`Generated ${cardOrder.length} static blog pages, sitemap.xml, robots.txt.`);
+console.log(`Generated ${cardOrder.length} static blog pages, sitemap.xml, robots.txt, llms.txt.`);
 console.log(`Extracted ${homeImgCounter} homepage decorative images to /assets.`);
