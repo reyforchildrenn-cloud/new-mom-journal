@@ -64,7 +64,12 @@ const AMAZON_URL = 'https://www.amazon.com/s?k=silver+nursing+cup&me=A1R76KWLYEA
 const PUBLISHER = { '@type': 'Organization', name: 'The New Mom Journal', url: `${SITE}/` };
 const AUTHOR = { '@type': 'Organization', name: 'The New Mom Journal Editorial Team', url: `${SITE}/` };
 
-let raw = fs.readFileSync(SRC, 'utf8');
+// Normalize to LF: index.html may be checked out with CRLF line endings on
+// Windows (git core.autocrlf), but every regex in this script and every
+// template literal below is LF-only. Without this, a fresh checkout makes
+// the strip regexes silently fail to match the old CRLF-terminated block,
+// so the new LF-terminated one gets appended instead of replacing it.
+let raw = fs.readFileSync(SRC, 'utf8').replace(/\r\n/g, '\n');
 
 // ---------- 1. Extract shared <style> block (design system CSS) ----------
 const bodyIdx = raw.indexOf('<body>');
@@ -397,7 +402,6 @@ const websiteLd = jsonLdScript({
     '@type': 'Organization',
     name: 'ReyForChildren (RFC)',
     url: `${SITE}/`,
-    sameAs: [AMAZON_URL],
   },
 });
 
@@ -415,14 +419,14 @@ const headUnit = `<title>${escapeAttr(homeTitle)}</title>
 <meta name="twitter:description" content="${escapeAttr(homeDescription)}">
 <meta name="twitter:image" content="${SITE}/assets/home-1.jpg">
 `;
-// Idempotent: strip every previously-injected copy of this exact block (content-based,
-// not marker-based, so it also cleans up copies left behind by older versions of this
-// script) before inserting exactly one fresh copy. Without this, re-running the script
-// duplicates title/meta/OG tags a little more each time, since the replaced text always
-// still contains the original search string as a prefix.
-const headUnitRe = new RegExp(headUnit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+// Idempotent: strip every previously-injected copy of this block before inserting exactly
+// one fresh copy. Matched structurally (tag + fixed prefix), not by exact content, so
+// re-running the script after the injected content itself changes (e.g. editing homeTitle
+// or the WebSite JSON-LD fields) still finds and removes the old copy instead of piling up
+// a duplicate next to it.
+const headUnitRe = /<title>[\s\S]*?<\/title>\n<meta name="description"[\s\S]*?<meta name="twitter:image"[^>]*>\n/g;
 raw = raw.replace(headUnitRe, '');
-const websiteLdRe = new RegExp(websiteLd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+const websiteLdRe = /<script type="application\/ld\+json">\{"@context":"https:\/\/schema\.org","@type":"WebSite".*?<\/script>\n?/g;
 raw = raw.replace(websiteLdRe, '');
 raw = raw.replace('</head>', `${headUnit}${websiteLd}\n</head>`);
 
